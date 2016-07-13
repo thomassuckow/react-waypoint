@@ -57,6 +57,7 @@ export default class Waypoint extends React.Component {
     super();
 
     this.refElement = (e) => this._ref = e;
+    this._timeout = null;
   }
 
   componentWillMount() {
@@ -72,13 +73,7 @@ export default class Waypoint extends React.Component {
     }
     this._handleScroll =
       this.props.throttleHandler(this._handleScroll.bind(this));
-    this.scrollableAncestor = this._findScrollableAncestor();
-    if (this.props.debug) {
-      debugLog('scrollableAncestor', this.scrollableAncestor);
-    }
-    this.scrollableAncestor.addEventListener('scroll', this._handleScroll);
-    window.addEventListener('resize', this._handleScroll);
-    this._handleScroll(null);
+    this._timeout = setTimeout(this._handleMounted.bind(this), 0);
   }
 
   componentDidUpdate() {
@@ -87,10 +82,13 @@ export default class Waypoint extends React.Component {
     }
 
     // The element may have moved.
-    this._handleScroll(null);
+    if (!this._timeout) {
+      this._timeout = setTimeout(this._handleScroll.bind(this, null), 0);
+    }
   }
 
   componentWillUnmount() {
+    clearTimeout(this._timeout);
     if (!Waypoint.getWindow()) {
       return;
     }
@@ -103,6 +101,16 @@ export default class Waypoint extends React.Component {
       this.scrollableAncestor.removeEventListener('scroll', this._handleScroll);
     }
     window.removeEventListener('resize', this._handleScroll);
+  }
+
+  _handleMounted() {
+    this.scrollableAncestor = this._findScrollableAncestor();
+    if (this.props.debug) {
+      debugLog('scrollableAncestor', this.scrollableAncestor);
+    }
+    this.scrollableAncestor.addEventListener('scroll', this._handleScroll);
+    window.addEventListener('resize', this._handleScroll);
+    this._handleScroll(null);
   }
 
   /**
@@ -153,6 +161,7 @@ export default class Waypoint extends React.Component {
    *   called by a React lifecyle method
    */
   _handleScroll(event) {
+    this._timeout = null;
     const bounds = this._getBounds();
     const currentPosition = this._currentPosition(bounds);
     const previousPosition = this._previousPosition || null;
